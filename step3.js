@@ -2,12 +2,12 @@ const fs = require('fs');
 const axios = require('axios');
 const open = (...args) => import('open').then(mod => mod.default(...args));         // the open package is ESM-only... I could've just converted to ESM but I'd already struggled to find this.:D
 
-function output(content, outPath) {
-    if (outPath) {
+function output(content, dest) {
+    if (dest) {
         try {
-            fs.writeFileSync(outPath, content, 'utf8');
+            fs.writeFileSync(dest, content, 'utf8');
         } catch (err) {
-            console.error(`Couldn't write ${outPath}: ${err.message}`);
+            console.error(`Couldn't write ${dest}: ${err.message}`);
             process.exit(1)
         }
     } else {
@@ -15,29 +15,36 @@ function output(content, outPath) {
     }
 }
 
-function cat(path, outPath) {
+function cat(src, dest) {
     try {
-        const data = fs.readFileSync(path, 'utf8');
-        console.log(data, outPath);
+        const data = fs.readFileSync(src, 'utf8');
+
+        switch(dest) {
+            case 'console':
+                console.log(data);
+                break;
+            default:
+                output(data, dest);
+        }
     } catch (err) {
-        console.error(`Error reading ${path}:`, err.message);
+        console.error(`Error reading ${src}:`, err.message);
         process.exit(1);
     }
 }
 
-async function validated(url) {
-    try {
-        await axios.get(url);
-        return true;
-    } catch (err) {
-        if (err.code === 'ENOTFOUND') {
-            console.error(`404: url not found: ${url}`);
-        } else {
-            console.error(`Error fetching ${url}:`, err.message);
-        }
-        return false;
-    }
-}
+// async function validated(url) {
+//     try {
+//         await axios.get(url);
+//         return true;
+//     } catch (err) {
+//         if (err.code === 'ENOTFOUND') {
+//             console.error(`404: url not found: ${url}`);
+//         } else {
+//             console.error(`Error fetching ${url}:`, err.message);
+//         }
+//         return false;
+//     }
+// }
 
 async function webCat(src, dest) {
     let payload;
@@ -45,7 +52,7 @@ async function webCat(src, dest) {
     try {
         payload = await axios.get(src);
     } catch (err) {
-        console.error(`Error fetching ${src}:`, err);
+        console.error(`Error fetching ${src}:`, err.code==='ENOTFOUND'?'404':err.code);
         process.exit(1);
     }
 
@@ -60,7 +67,8 @@ async function webCat(src, dest) {
             break;
 
         default:
-            //write to file
+            output(payload.data, dest);
+            console.log(`Contents written to ${dest}`);
             break;
     }
 }
@@ -77,44 +85,25 @@ async function main() {
         process.exit(1);
     };
 
-
-    //if --out and destination specified:
-    if (args[0] === '--out' && args[2]) {
-        webCat(args[1], args[2]);
-    
-    //if --out and no destination specified:
-    } else if (args[0] === '--out') {
-        webCat(args[1], 'console'); 
-
-    //if no--out and destination specified:
-    } else if (args[0] !== '--out' && args[1]) {
-        webCat(args[0], args[1]);
-
-    //if no--out and no destination specified:
-    } else if (args[0] !== '--out') {
-        webCat(args[0], 'console');
-    };
-
-
-
-    
-    
-
-    
-    
-
-
-
-
-
-
-    // if (args[2].startsWith('http://') || args[2].startsWith('https://')) {
-    //     if (await validated(args)) {
-    //         await webCat(args);
-    //     }
-    // } else {
-    //     cat(args);
-    // }
+    if (args[1].startsWith('http://') || args[1].startsWith('https://')) {
+        //if --out and destination specified:
+        if (args[0] === '--out' && args[2]) {
+            await webCat(args[1], args[2]);
+        
+        //if --out and no destination specified:
+        } else if (args[0] === '--out') {
+            await webCat(args[1], 'console');   
+        }
+    } else {
+        //if --out and destination specified:
+        if (args[0] === '--out' && args[2]) {
+            cat(args[1], args[2]);
+        
+        //if --out and no destination specified:
+        } else if (args[0] === '--out') {
+            cat(args[1], 'console');   
+        }
+    }
 }
 
 main();
