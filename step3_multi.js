@@ -37,20 +37,6 @@ function cat(src, dest) {
     }
 }
 
-// async function validated(url) {
-//     try {
-//         await axios.get(url);
-//         return true;
-//     } catch (err) {
-//         if (err.code === 'ENOTFOUND') {
-//             console.error(`404: url not found: ${url}`);
-//         } else {
-//             console.error(`Error fetching ${url}:`, err.message);
-//         }
-//         return false;
-//     }
-// }
-
 async function webCat(src, dest) {
     let payload;
 
@@ -83,6 +69,31 @@ async function webCat(src, dest) {
     }
 }
 
+async function director(args0, args1, args2) {
+   //these are separated intentionally for clarity (referencing the duplication)
+    if (args1.startsWith('http://') || args1.startsWith('https://')) {
+        //web
+        //if --out and destination specified:
+        if (args0 === '--out' && args2) {
+            await webCat(args1, args2);
+        
+        //if --out and no destination specified:
+        } else if (args0 === '--out') {
+            await webCat(args1, 'console');   
+        }
+    } else {
+        //file
+        //if --out and destination specified:
+        if (args0 === '--out' && args2) {
+            cat(args1, args2);
+        
+        //if --out and no destination specified:
+        } else if (args0 === '--out') {
+            cat(args1, 'console');   
+        }
+    };
+};
+
 async function main() {
     const args = process.argv.slice(2);
     console.log(args, args.length);
@@ -93,30 +104,16 @@ async function main() {
         console.log('\nExample Usage:');
         console.log(' node step3.js [--out] <source file path or web address> <file destination, [browser], or [console]>\n\n');
         process.exit(1);
-    };
-
-    //these are separated intentionally for clarity (referencing the duplication)
-    if (args[1].startsWith('http://') || args[1].startsWith('https://' || args[1].startsWith('www.'))) {
-        //web
-        //if --out and destination specified:
-        if (args[0] === '--out' && args[2]) {
-            await webCat(args[1], args[2]);
-        
-        //if --out and no destination specified:
-        } else if (args[0] === '--out') {
-            await webCat(args[1], 'console');   
-        }
+    //if many sets of args
+    } else if (args.length >= 4) {
+        for (let i = 1; i < args.length; i+=2) {
+            await director(args[0], args[i], args[i+1]);
+        };
+    //if single set of args
     } else {
-        //file
-        //if --out and destination specified:
-        if (args[0] === '--out' && args[2]) {
-            cat(args[1], args[2]);
-        
-        //if --out and no destination specified:
-        } else if (args[0] === '--out') {
-            cat(args[1], 'console');   
-        }
+        await director(args[0], args[1], args[2]);
     }
+    process.exit(0);
 }
 
 main();
@@ -124,4 +121,8 @@ main();
 // i wanted to provide a quick check before opening the url, so I duct-taped both axios and open to accomplish this.
 // i also wanted to open files in the default browser.
 // extract webpage -> write to file -> open file in browser -> rinse and repeat
+// aarrrrgghh!
 
+
+// this version requires two arguments per sequence of requests
+// <source - destination> <source - destination> <source - destination> etc... 
