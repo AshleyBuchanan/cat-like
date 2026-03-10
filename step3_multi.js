@@ -15,7 +15,7 @@ function outputToFile(content, dest) {
     }
 }
 
-function cat(src, dest) {
+async function cat(src, dest) {
     try {
         const data = fs.readFileSync(src, 'utf8');
 
@@ -25,7 +25,7 @@ function cat(src, dest) {
                 break;
             
             case 'browser':
-                open(src);
+                await open(src);
                 break;
 
             default:
@@ -85,11 +85,11 @@ async function director(args0, args1, args2) {
         //file
         //if --out and destination specified:
         if (args0 === '--out' && args2) {
-            cat(args1, args2);
+            await cat(args1, args2);
         
         //if --out and no destination specified:
         } else if (args0 === '--out') {
-            cat(args1, 'console');   
+            await cat(args1, 'console');   
         }
     };
 };
